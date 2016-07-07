@@ -1,0 +1,24 @@
+#!/bin/bash
+
+\cp ./consul /usr/bin/
+iptables -I INPUT -p tcp --dport 8300 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8301 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8302 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8400 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8500 -j ACCEPT
+service iptables save
+IP_mgmt=`LANG=C ifconfig br-mgmt | awk '/inet /{ print $2 }'`
+IP_storage=`LANG=C ifconfig br-storage | awk '/inet /{ print $2 }'`
+cluster1_node="cluster-1_"`LANG=C hostname | cut -f1 -d .`
+cluster2_node="cluster-2_"`LANG=C hostname | cut -f1 -d .`
+\cp ./consul_server_start /etc/rc.d/init.d/
+chkconfig --add consul_client_start
+chkconfig consul_client_start on
+consul agent -server -bootstrap-expect 3 -client=$IP_mgmt -data-dir /tmp/consul1 -node=$cluster1_node -bind=$IP_mgmt -dc=dc1 -config-dir /etc/consul.d -join=192.168.200.3 &
+consul agent -server -bootstrap-expect 3 -client=$IP_storage -data-dir /tmp/consul2 -node=$cluster2_node -bind=$IP_storage -dc=dc2 -config-dir /etc/consul.d -join=192.168.30.2 &
+
+
+
+
+
+

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+\cp ./consul /usr/bin/
+iptables -I INPUT -p tcp --dport 8300 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8301 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8302 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8400 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8500 -j ACCEPT
+service iptables save
+
+IP_mgmt=`LANG=C ifconfig br-mgmt | awk '/inet /{ print $2 }'`
+IP_storage=`LANG=C ifconfig br-storage | awk '/inet /{ print $2 }'`
+cluster1_node="cluster-1_"`LANG=C hostname | cut -f1 -d .`
+cluster2_node="cluster-2_"`LANG=C hostname | cut -f1 -d .`
+
+change_string_1='consul agent -server -bootstrap-expect 3 -client=$IP_mgmt -data-dir /tmp/consul1 -node=$cluster1_node -bind=$IP_mgmt -dc=dc1 -join='$IP_mgmt" &"
+change_string_2='consul agent -server -bootstrap-expect 3 -client=$IP_storage -data-dir /tmp/consul2 -node=$cluster2_node -bind=$IP_storage -dc=dc2 -join='$IP_storage" &"
+change_string_3='consul agent -client=$IP_mgmt -data-dir /tmp/consul1 -node=$cluster1_node -bind=$IP_mgmt -dc=dc1 -config-dir /etc/consul.d -join='$IP_mgmt" &"
+change_string_4='consul agent -client=$IP_storage -data-dir /tmp/consul2 -node=$cluster2_node -bind=$IP_storage -dc=dc2 -config-dir /etc/consul.d -join='$IP_storage" &"
+sed -i -e "17c $change_string_1" ./consul_server_build
+sed -i -e "18c $change_string_2" ./consul_server_build
+sed -i -e "17c $change_string_3" ./consul_client_build
+sed -i -e "18c $change_string_4" ./consul_client_build
+
+\cp ./consul_server_start /etc/init.d/
+ln -s /etc/init.d/consul_server_start /etc/rc.d/rc3.d/S100ssh
+
+consul agent -server -bootstrap-expect 3 -client=$IP_mgmt -data-dir /tmp/consul1 -node=$cluster1_node -bind=$IP_mgmt -dc=dc1 &
+
+consul agent -server -bootstrap-expect 3 -client=$IP_storage -data-dir /tmp/consul2 -node=$cluster2_node -bind=$IP_storage -dc=dc2 &

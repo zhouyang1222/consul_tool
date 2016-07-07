@@ -1,0 +1,14 @@
+#!/bin/bash
+#add for chkconfig
+#chkconfig: 2345 70 30
+#description: server start for consul
+#processname:consul_start
+
+IP_mgmt=`LANG=C ifconfig br-mgmt | awk '/inet /{ print $2 }'`
+IP_storage=`LANG=C ifconfig br-storage | awk '/inet /{ print $2 }'`
+cluster1_node="cluster-1_"`LANG=C hostname | cut -f1 -d .`
+cluster2_node="cluster-2_"`LANG=C hostname | cut -f1 -d .`
+
+consul agent -server -bootstrap-expect 3 -client=$IP_mgmt -data-dir /tmp/consul1 -node=$cluster1_node -bind=$IP_mgmt -dc=dc1 -rejoin &
+
+consul agent -server -bootstrap-expect 3 -client=$IP_storage -data-dir /tmp/consul2 -node=$cluster2_node -bind=$IP_storage -dc=dc2 -rejoin &
